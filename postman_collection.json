@@ -1,0 +1,146 @@
+{
+  "info": {
+    "name": "URL Shortener",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "code", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Shorten",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('code', pm.response.json().code);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"url\": \"https://example.com/some/long/path\"\n}" },
+        "url": "{{baseUrl}}/shorten"
+      }
+    },
+    {
+      "name": "Redirect",
+      "protocolProfileBehavior": { "followRedirects": false },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('302 Found', () => pm.response.to.have.status(302));",
+              "pm.test('Location header', () => pm.response.to.have.header('Location', 'https://example.com/some/long/path'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{code}}"
+      }
+    },
+    {
+      "name": "Stats",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('visits counted', () => pm.expect(pm.response.json().visits).to.be.above(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/stats/{{code}}"
+      }
+    },
+    {
+      "name": "Errors",
+      "item": [
+        {
+          "name": "Shorten - missing url",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/shorten"
+          }
+        },
+        {
+          "name": "Shorten - malformed url",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"url\": \"not a url\"\n}" },
+            "url": "{{baseUrl}}/shorten"
+          }
+        },
+        {
+          "name": "Shorten - malformed json",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{bad" },
+            "url": "{{baseUrl}}/shorten"
+          }
+        },
+        {
+          "name": "Redirect - unknown code",
+          "protocolProfileBehavior": { "followRedirects": false },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/unknown"
+          }
+        },
+        {
+          "name": "Stats - unknown code",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/stats/unknown"
+          }
+        }
+      ]
+    }
+  ]
+}
